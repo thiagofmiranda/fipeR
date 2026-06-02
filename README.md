@@ -59,10 +59,67 @@ source("dev/run_dev.R")
 fipeR::run_app(options = list(host = "0.0.0.0", port = 3838))
 ```
 
-Atrás de um proxy basta expor a porta `3838`. A implantação em container/ShinyProxy é
-feita no próprio ambiente do ShinyProxy (o `Dockerfile` e a orquestração são criados lá);
-o app só precisa escutar em `0.0.0.0:3838` e apontar `FIPE_DATA_DIR` para um volume
-persistente.
+Atrás de um proxy basta expor a porta `3838`.
+
+## Implantação no ShinyProxy
+
+O [ShinyProxy](https://www.shinyproxy.io/) sobe **um container Docker por sessão**. Para
+este app são necessárias três peças: a imagem (Dockerfile), a entrada em
+`application.yml` e um **volume persistente** para os dados.
+
+### 1. Dockerfile
+
+Instala o pacote a partir do GitHub (as dependências vêm do `DESCRIPTION`) e roda o app
+em `0.0.0.0:3838`.
+
+```dockerfile
+FROM rocker/r-ver:4.5.1
+
+# Bibliotecas de sistema usadas por arrow, httr2 e afins.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libcurl4-openssl-dev libssl-dev libxml2-dev zlib1g-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN R -q -e "install.packages('remotes'); \
+             remotes::install_github('thiagofmiranda/fipeR')"
+
+# Diretorio de dados gravavel/persistente (mapeado para um volume no host).
+ENV FIPE_DATA_DIR=/data
+RUN mkdir -p /data
+
+EXPOSE 3838
+CMD ["R", "-e", "fipeR::run_app(options = list(host = '0.0.0.0', port = 3838))"]
+```
+
+Construa e publique a imagem (ex.: `docker build -t fiper:latest .`).
+
+### 2. application.yml (ShinyProxy)
+
+Adicione a app em `specs:`. O `container-volumes` monta uma pasta do host no `/data` do
+container, e o `port` deve bater com a porta do `run_app()`:
+
+```yaml
+specs:
+  - id: fiper
+    display-name: Dashboard FIPE
+    description: Download e visualização de preços da Tabela FIPE
+    container-image: fiper:latest
+    port: 3838
+    container-env:
+      FIPE_DATA_DIR: /data
+    container-volumes: ["/srv/fiper/data:/data"]
+```
+
+### 3. Persistência dos dados
+
+A aba *Preços* só mostra algo depois que dados são baixados pela aba *Download*. Como os
+containers do ShinyProxy são efêmeros, **os parquets precisam viver num volume**: o
+mapeamento `/srv/fiper/data:/data` acima faz o download gravar em `/data` (apontado por
+`FIPE_DATA_DIR`) e persistir no host entre sessões e reinícios.
+
+> Use o **mesmo** caminho de host para todas as sessões se quiser que o histórico baixado
+> seja compartilhado entre usuários. Para isolar por usuário, use um subcaminho com
+> variáveis do ShinyProxy, ex.: `["/srv/fiper/#{proxy.userId}:/data"]`.
 
 ## Estrutura do código
 
