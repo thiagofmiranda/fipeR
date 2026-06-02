@@ -5,6 +5,10 @@
 .Ruserdata
 .Rapp.history
 
+# R package build artifacts
+*.tar.gz
+*.Rcheck/
+
 # OS / editor
 .DS_Store
 Thumbs.db

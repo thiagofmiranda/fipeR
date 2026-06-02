@@ -2,9 +2,11 @@ default:
   golem_name: fipeR
   golem_version: 0.1.0
   app_prod: no
-  # Caminho dos datasets parquet (relativo ao working dir onde a app roda).
-  data_dir: data
+  # data_dir nao e' fixado aqui: run_app() resolve o default como
+  # tools::R_user_dir("fipeR", "data") (gravavel/persistente apos install).
+  # Sobrescreva com FIPE_DATA_DIR (container) ou run_app(data_dir = ...).
 production:
   app_prod: yes
 dev:
   golem_wd: !expr golem::pkg_path()
+  data_dir: data

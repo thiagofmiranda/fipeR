@@ -9,7 +9,6 @@ Description: Aplicacao Shiny (estruturada com golem) para orquestrar o download
     datasets parquet particionados (arrow).
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
 Imports:
     arrow,
     bsicons,

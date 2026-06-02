@@ -15,14 +15,25 @@ run_app <- function(data_dir = NULL,
                     uiPattern = "/",
                     ...) {
   if (is.null(data_dir)) {
-    # Precedencia: env var (container) > golem-config > padrao "data".
+    # Precedencia: env var (container) > golem-config > pasta gravavel do
+    # usuario. O default usa tools::R_user_dir() para que, instalado via
+    # install_github, a app tenha um diretorio gravavel e persistente (a
+    # biblioteca do pacote e' read-only). Em dev, run_dev.R passa
+    # data_dir = "data" explicitamente, entao este ramo nem e' atingido.
     env_dir <- Sys.getenv("FIPE_DATA_DIR", unset = "")
     if (nzchar(env_dir)) {
       data_dir <- env_dir
     } else {
       data_dir <- get_golem_config("data_dir")
-      if (is.null(data_dir)) data_dir <- "data"
+      if (is.null(data_dir)) {
+        data_dir <- tools::R_user_dir("fipeR", which = "data")
+      }
     }
+  }
+
+  # Garante que o diretorio de dados exista (o download grava nele).
+  if (!dir.exists(data_dir)) {
+    dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
   }
 
   with_golem_options(
