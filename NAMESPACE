@@ -1,0 +1,9 @@
+# Generated manually (no roxygen step required to run the app)
+
+export(run_app)
+export(fipe_api)
+export(fipe_load_prices)
+
+import(shiny)
+
+importFrom(rlang, ".data")

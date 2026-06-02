@@ -1,0 +1,131 @@
+/* ===== FIPE Dashboard - estilo minimalista ===== */
+
+:root {
+  --fipe-bg: #f8fafc;
+  --fipe-card: #ffffff;
+  --fipe-border: #e2e8f0;
+}
+
+body {
+  background-color: var(--fipe-bg);
+}
+
+/* Navbar */
+.navbar {
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.06);
+}
+.fipe-brand {
+  letter-spacing: 0.2px;
+  font-size: 1.05rem;
+}
+.fipe-brand .bi {
+  color: #60a5fa;
+  vertical-align: -2px;
+}
+
+/* Cards & value boxes mais leves */
+.card {
+  border: 1px solid var(--fipe-border);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.card-header {
+  background-color: transparent;
+  border-bottom: 1px solid var(--fipe-border);
+  font-weight: 600;
+}
+.bslib-value-box {
+  border: 1px solid var(--fipe-border);
+}
+.bslib-value-box .value-box-value {
+  font-weight: 700;
+}
+
+/* Sidebar */
+.bslib-sidebar-layout > .sidebar {
+  background-color: var(--fipe-card);
+  border-right: 1px solid var(--fipe-border);
+}
+.bslib-sidebar-layout .sidebar-title {
+  font-weight: 600;
+}
+
+/* Contador de series selecionadas no sidebar */
+.fipe-series-count {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.5rem;
+  color: #1e3a8a;
+}
+.fipe-series-count .bi {
+  font-size: 1.1rem;
+  color: #2563eb;
+}
+.fipe-series-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  flex: 1 1 auto;
+}
+.fipe-series-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-left: auto;
+}
+
+/* Inputs */
+.control-label,
+.shiny-input-container label {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: #334155;
+}
+
+/* Picker (bootstrap-select) */
+.bootstrap-select .dropdown-toggle {
+  border-radius: 0.5rem !important;
+}
+
+/* Log */
+pre {
+  background-color: #0f172a;
+  color: #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  border: none;
+}
+
+/* Espacamento geral */
+.bslib-page-navbar .navbar + .container-fluid,
+.bslib-page-navbar .navbar + div {
+  padding-top: 0.5rem;
+}
+
+/* ===== Responsividade ===== */
+
+/* Garante rolagem vertical da pagina (com fillable = FALSE no page_navbar). */
+html, body {
+  height: auto;
+  overflow-y: auto;
+}
+
+/* O grafico nunca colapsa em telas menores: mantem altura minima utilizavel. */
+.card .echarts4r,
+.card .echarts4r > div {
+  min-height: 360px;
+}
+
+/* Em telas estreitas o sidebar pode ocupar largura total ao abrir, evitando
+   espremer o conteudo principal. O bslib ja empilha; reforcamos espacamento. */
+@media (max-width: 768px) {
+  .bslib-sidebar-layout > .main {
+    padding-top: 0.5rem;
+  }
+  .card .echarts4r,
+  .card .echarts4r > div {
+    min-height: 300px;
+  }
+}

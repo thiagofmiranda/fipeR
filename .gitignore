@@ -1,0 +1,13 @@
+# R session / history
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+.Rapp.history
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/

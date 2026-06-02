@@ -1,0 +1,10 @@
+default:
+  golem_name: fipeR
+  golem_version: 0.1.0
+  app_prod: no
+  # Caminho dos datasets parquet (relativo ao working dir onde a app roda).
+  data_dir: data
+production:
+  app_prod: yes
+dev:
+  golem_wd: !expr golem::pkg_path()

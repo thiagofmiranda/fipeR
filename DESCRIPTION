@@ -1,0 +1,36 @@
+Package: fipeR
+Title: Dashboard FIPE - Download e Visualizacao de Precos de Veiculos
+Version: 0.1.0
+Authors@R:
+    person("Thiago", "F. M.", email = "thiagofm.pa@gmail.com", role = c("aut", "cre"))
+Description: Aplicacao Shiny (estruturada com golem) para orquestrar o download
+    da Tabela FIPE e visualizar a evolucao de precos de veiculos por marca,
+    modelo, ano-modelo e ano de referencia. Os dados sao persistidos em
+    datasets parquet particionados (arrow).
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+    arrow,
+    bsicons,
+    bslib,
+    config (>= 0.3.1),
+    dplyr,
+    echarts4r,
+    golem (>= 0.4.0),
+    htmltools,
+    httr2,
+    jsonlite,
+    lubridate,
+    purrr,
+    reactable,
+    rlang,
+    scales,
+    shiny (>= 1.7.0),
+    shinyWidgets,
+    stringr,
+    tidyr,
+    waiter
+RoxygenNote: 7.3.1
+Depends:
+    R (>= 4.1.0)
