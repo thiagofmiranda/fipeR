@@ -25,24 +25,49 @@ fipe_month_to_date <- function(x) {
   as.Date(paste0(ano, "-", meses[mes], "-01"))
 }
 
+#' Prototipo (0 linhas) do tibble de precos tratado.
+#'
+#' Sem nenhum dado baixado (ex.: primeira execucao no ShinyProxy), os
+#' consumidores dos precos (filtros, `dplyr::distinct`, graficos) precisam
+#' encontrar as colunas esperadas para apenas ficarem vazios, em vez de
+#' quebrar com "Must use existing variables". Mantem as mesmas colunas/tipos
+#' que `fipe_load_prices` produz no caminho com dados.
+#' @noRd
+fipe_prices_prototype <- function() {
+  dplyr::tibble(
+    marca          = character(0),
+    modelo         = character(0),
+    combustivel    = character(0),
+    anoModelo      = integer(0),
+    anoModeloLabel = character(0),
+    anoOrdem       = integer(0),
+    anoReferencia  = numeric(0),
+    data           = as.Date(character(0)),
+    valor          = numeric(0),
+    origem_0km     = logical(0),
+    serie          = character(0)
+  )
+}
+
 #' Le e trata o dataset de precos.
 #'
 #' Coleta tudo, converte moeda/data, deriva `anoReferencia` e rotula o
 #' ano-modelo 32000 como "0 km".
 #'
 #' @param data_dir diretorio raiz dos dados.
-#' @return tibble tratado, ou tibble vazio se o dataset nao existir.
+#' @return tibble tratado, ou um prototipo de 0 linhas (com as colunas
+#'   esperadas) se o dataset nao existir ou estiver vazio.
 #' @export
 fipe_load_prices <- function(data_dir = "data") {
   path <- file.path(data_dir, "prices")
   if (!dir.exists(path)) {
-    return(dplyr::tibble())
+    return(fipe_prices_prototype())
   }
 
   df <- arrow::open_dataset(path) |>
     dplyr::collect()
 
-  if (nrow(df) == 0) return(df)
+  if (nrow(df) == 0) return(fipe_prices_prototype())
 
   df |>
     dplyr::mutate(

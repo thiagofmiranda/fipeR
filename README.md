@@ -81,7 +81,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 RUN R -q -e "install.packages('remotes'); \
-             remotes::install_github('thiagofmiranda/fipeR@v0.1.0')"
+             remotes::install_github('thiagofmiranda/fipeR@v0.1.1')"
 
 # Diretorio de dados gravavel/persistente (mapeado para um volume no host).
 ENV FIPE_DATA_DIR=/data
