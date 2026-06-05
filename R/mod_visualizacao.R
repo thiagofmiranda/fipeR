@@ -64,15 +64,8 @@ mod_visualizacao_ui <- function(id) {
 
     bslib::card(
       full_screen = TRUE,
-      bslib::card_header(
-        class = "d-flex justify-content-between align-items-center",
-        tags$span(bsicon("graph-up"), "Evolucao do preco"),
-        shinyWidgets::prettySwitch(
-          ns("log_y"), "Escala log", status = "primary",
-          fill = TRUE, inline = TRUE
-        )
-      ),
-      echarts4r::echarts4rOutput(ns("grafico"), height = "440px")
+      bslib::card_header(tags$span(bsicon("graph-up"), "Evolucao do preco")),
+      echarts4r::echarts4rOutput(ns("grafico"), height = "600px")
     ),
 
     bslib::card(
@@ -216,25 +209,49 @@ mod_visualizacao_server <- function(id, dados) {
         dplyr::summarise(valor = mean(.data$valor, na.rm = TRUE), .groups = "drop") |>
         dplyr::arrange(.data$data)
 
-      e <- plot_df |>
+      # Eixo Y abreviado (R$ 50 mil / R$ 1,2 mi); tooltip com valor completo.
+      eixo_fmt <- htmlwidgets::JS(
+        "function(v){",
+        "  if (v >= 1e6) return 'R$ ' + (v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1}) + ' mi';",
+        "  if (v >= 1e3) return 'R$ ' + (v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0}) + ' mil';",
+        "  return 'R$ ' + v;",
+        "}"
+      )
+      tip_fmt <- htmlwidgets::JS(
+        "function(v){ return 'R$ ' + Number(v).toLocaleString('pt-BR',",
+        "{minimumFractionDigits:2, maximumFractionDigits:2}); }"
+      )
+
+      plot_df |>
         dplyr::group_by(.data$serie) |>
         echarts4r::e_charts(data) |>
-        echarts4r::e_line(valor, smooth = FALSE, symbol = "none", lineStyle = list(width = 2.5)) |>
+        echarts4r::e_line(
+          valor, smooth = TRUE, symbol = "none",
+          lineStyle = list(width = 3), emphasis = list(focus = "series")
+        ) |>
         echarts4r::e_tooltip(
-          trigger = "axis",
-          formatter = echarts4r::e_tooltip_pointer_formatter("currency")
+          trigger = "axis", valueFormatter = tip_fmt,
+          backgroundColor = "rgba(255,255,255,0.96)",
+          borderColor = "rgba(0,0,0,0.08)",
+          textStyle = list(color = "#1e293b")
         ) |>
-        echarts4r::e_legend(type = "scroll", top = 0) |>
-        echarts4r::e_grid(top = 56, left = 70, right = 24, bottom = 36) |>
-        echarts4r::e_x_axis(type = "time") |>
+        echarts4r::e_legend(type = "scroll", top = 4) |>
+        echarts4r::e_grid(top = 48, left = 72, right = 24, bottom = 28) |>
+        echarts4r::e_x_axis(
+          type = "time",
+          axisLine = list(lineStyle = list(color = "rgba(0,0,0,0.15)")),
+          axisTick = list(show = FALSE),
+          splitLine = list(show = FALSE),
+          axisLabel = list(color = "#64748b")
+        ) |>
         echarts4r::e_y_axis(
-          type = if (isTRUE(input$log_y)) "log" else "value",
-          axisLabel = list(formatter = "R$ {value}")
+          scale = TRUE,
+          axisLine = list(show = FALSE),
+          axisTick = list(show = FALSE),
+          splitLine = list(lineStyle = list(color = "rgba(0,0,0,0.06)")),
+          axisLabel = list(color = "#64748b", formatter = eixo_fmt)
         ) |>
-        echarts4r::e_datazoom(type = "slider", bottom = 0) |>
         echarts4r::e_color(pal_fipe(dplyr::n_distinct(plot_df$serie)))
-
-      e
     })
 
     # --- Tabela ----------------------------------------------------

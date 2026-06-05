@@ -115,7 +115,7 @@ html, body {
 /* O grafico nunca colapsa em telas menores: mantem altura minima utilizavel. */
 .card .echarts4r,
 .card .echarts4r > div {
-  min-height: 360px;
+  min-height: 520px;
 }
 
 /* Em telas estreitas o sidebar pode ocupar largura total ao abrir, evitando

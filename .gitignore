@@ -15,3 +15,6 @@ Thumbs.db
 
 # Claude
 .claude/
+
+# Backups da migracao de layout de dados (gerados localmente)
+data/_prices_old_backup_*/

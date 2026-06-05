@@ -141,6 +141,7 @@ mod_download_server <- function(id, data_dir = "data") {
       idx = 0L,          # quantos itens ja processados
       total = 0L,        # tamanho do plano
       baixados = 0L,     # series efetivamente gravadas
+      buffer = list(),   # linhas baixadas aguardando flush em disco
       rodando = FALSE,   # ha um download em andamento?
       cancelar = FALSE   # cancelamento solicitado?
     )
@@ -148,6 +149,23 @@ mod_download_server <- function(id, data_dir = "data") {
     add_log <- function(msg) {
       ts <- format(Sys.time(), "%H:%M:%S")
       rv$log <- c(rv$log, paste0("[", ts, "] ", msg))
+    }
+
+    # Descarrega o buffer em disco de forma resiliente: uma falha de gravacao
+    # NUNCA pode derrubar o heartbeat (senao o botao Cancelar para de reagir).
+    # Em caso de erro, loga e PRESERVA o buffer para retentar no proximo flush.
+    flush_buffer <- function() {
+      if (length(rv$buffer) == 0) return(invisible())
+      ok <- tryCatch({
+        fipe_write_prices(dplyr::bind_rows(rv$buffer), data_dir)
+        TRUE
+      }, error = function(e) {
+        add_log(paste("ERRO ao gravar precos (mantendo no buffer):",
+                      conditionMessage(e)))
+        FALSE
+      })
+      if (ok) rv$buffer <- list()
+      invisible(ok)
     }
 
     # --- Carrega tabelas de referencia na entrada ------------------
@@ -161,9 +179,14 @@ mod_download_server <- function(id, data_dir = "data") {
       rv$tabelas <- tabs
       escolhas <- stats::setNames(tabs$codigoTabelaReferencia,
                                   stringr::str_trim(tabs$mesReferencia))
+      # Default do "De": janeiro de 2020 (se existir), senao a tabela mais
+      # antiga. O dropdown mantem TODAS as tabelas, entao 2001 continua
+      # disponivel para quem quiser o historico completo.
+      de_default <- escolhas[grepl("^janeiro/2020$", stringr::str_to_lower(names(escolhas)))]
+      if (length(de_default) == 0) de_default <- utils::tail(escolhas, 1)
       shinyWidgets::updatePickerInput(session, "tabela", choices = escolhas)
       shinyWidgets::updatePickerInput(session, "tabela_de", choices = escolhas,
-                                      selected = utils::tail(escolhas, 1))
+                                      selected = unname(de_default[1]))
       shinyWidgets::updatePickerInput(session, "tabela_ate", choices = escolhas,
                                       selected = escolhas[1])
       add_log(paste0("OK: ", nrow(tabs), " tabelas de referencia."))
@@ -282,14 +305,26 @@ mod_download_server <- function(id, data_dir = "data") {
         return()
       }
 
+      # Idempotencia: descarta o que ja esta em disco antes de bater na API.
+      total_plano <- nrow(plano)
+      plano <- fipe_filtrar_plano_novo(plano, data_dir)
+      ja_em_disco <- total_plano - nrow(plano)
+      if (nrow(plano) == 0) {
+        add_log(paste0("Tudo ja baixado: ", ja_em_disco,
+                       " combinacoes ja estao em disco. Nada a fazer."))
+        return()
+      }
+
       rv$fila     <- plano
       rv$total    <- nrow(plano)
       rv$idx      <- 0L
       rv$baixados <- 0L
+      rv$buffer   <- list()
       rv$cancelar <- FALSE
       rv$rodando  <- TRUE
       shinyWidgets::updateProgressBar(session, "pb", value = 0, total = rv$total)
-      add_log(paste0("Iniciando download de precos: ", rv$total, " combinacoes",
+      add_log(paste0("Iniciando download de precos: ", rv$total, " novas combinacoes",
+                     if (ja_em_disco > 0) paste0(" (", ja_em_disco, " ja em disco, puladas)") else "",
                      " (", nrow(versoes_df), " versoes x ", length(faixa), " meses)."))
     })
 
@@ -309,6 +344,7 @@ mod_download_server <- function(id, data_dir = "data") {
       if (terminou) {
         isolate({
           rv$rodando <- FALSE
+          flush_buffer()  # descarrega o que sobrou antes de encerrar
           motivo <- if (isTRUE(rv$cancelar)) "CANCELADO" else "concluido"
           shinyWidgets::updateProgressBar(session, "pb",
                                           value = rv$idx, total = max(rv$total, 1L))
@@ -330,17 +366,21 @@ mod_download_server <- function(id, data_dir = "data") {
       isolate({
         i <- rv$idx + 1L
         linha <- rv$fila[i, ]
-        res <- downloadPrices_safe(
+        res <- fetchPrice_safe(
           codigoTipoVeiculo      = linha$codigoTipoVeiculo,
           codigoMarca            = linha$codigoMarca,
           codigoModelo           = linha$codigoModelo,
           anoModelo              = linha$anoModelo,
           codigoTipoCombustivel  = linha$codigoTipoCombustivel,
-          codigoTabelaReferencia = linha$codigoTabelaReferencia,
-          data_dir               = data_dir
+          codigoTabelaReferencia = linha$codigoTabelaReferencia
         )
-        if (!is.null(res)) rv$baixados <- rv$baixados + 1L
+        if (!is.null(res)) {
+          rv$buffer[[length(rv$buffer) + 1L]] <- res
+          rv$baixados <- rv$baixados + 1L
+        }
         rv$idx <- i
+        # Flush periodico: durabilidade sem recriar arquivos minusculos.
+        if (length(rv$buffer) >= 25L) flush_buffer()
         shinyWidgets::updateProgressBar(session, "pb", value = i, total = rv$total)
       })
     })
@@ -351,7 +391,7 @@ mod_download_server <- function(id, data_dir = "data") {
       list(
         marcas = contar_particoes(file.path(data_dir, "models"), "codigoMarca"),
         modelos = contar_arquivos(file.path(data_dir, "models")),
-        precos = contar_arquivos(file.path(data_dir, "prices"))
+        precos = contar_series_precos(data_dir)
       )
     })
 
@@ -381,4 +421,19 @@ contar_particoes <- function(path, chave) {
   if (!dir.exists(path)) return(0L)
   dirs <- list.dirs(path, recursive = TRUE, full.names = FALSE)
   length(unique(dirs[grepl(paste0("^", chave, "="), basename(dirs))]))
+}
+
+#' Conta series de preco distintas (modelo x ano-modelo x combustivel).
+#'
+#' No layout achatado o numero de arquivos nao reflete mais quantas series
+#' existem, entao contamos a chave de serie diretamente do dataset.
+#' @noRd
+contar_series_precos <- function(data_dir) {
+  ex <- fipe_prices_existentes(data_dir)
+  if (nrow(ex) == 0) return(0L)
+  ex |>
+    dplyr::distinct(.data$codigoTipoVeiculo, .data$codigoMarca,
+                    .data$codigoModelo, .data$anoModelo,
+                    .data$codigoTipoCombustivel) |>
+    nrow()
 }
