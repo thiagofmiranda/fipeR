@@ -16,5 +16,8 @@ Thumbs.db
 # Claude
 .claude/
 
-# Backups da migracao de layout de dados (gerados localmente)
-data/_prices_old_backup_*/
+# Dados (parquet) ficam fora do versionamento: o pacote ja exclui data/ via
+# .Rbuildignore, e a app usa um diretorio gravavel proprio (R_user_dir) em
+# producao. Os arquivos permanecem em disco localmente, apenas nao sao mais
+# rastreados pelo git.
+data/
